@@ -7,17 +7,75 @@ const port = process.env.PORT || 3001;
 
 app.get("/", (req, res) => res.type('html').send(html));
 
+app.get('/brands', async (req, res) => {
+  try {
+    // Launch a headless browser
+    const browser = await puppeteer.launch({headless:false, defaultViewport:null});
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080 });
+    
+    // Go to the target website
+    await page.goto(`https://www.vinted.it/catalog`, { waitUntil: 'networkidle2' });
+
+    const rejectCookie = await page.waitForSelector('#onetrust-reject-all-handler');
+    if(rejectCookie) {
+      await rejectCookie.click();
+    }
+ 
+    // Wait for a specific element to ensure all data has loaded
+    const brandsDropdown = await page.waitForSelector('[data-testid="catalog--brand-filter--trigger--text"]');
+    // Open the dropdown and wait for it to open
+    if (brandsDropdown) {
+      await brandsDropdown.click();
+    }
+
+    await page.waitForSelector;
+
+    // Evaluate the page content and extract the desired information
+    const items = await page.evaluate(() => {
+      const elements = document.querySelectorAll('div:has([data-testid="catalog--brand-filter--trigger--text"]) ul.pile li')[0];
+      return Array.from(elements).map(element => (
+        element.children[0].children[0].children[0].children[0].children[0].children[0].children[0].innerText
+      ));
+    });
+ 
+    // Close the browser
+    await browser.close();
+ 
+    // Send the extracted information as JSON
+    res.json(items);
+  } catch (error) {
+    console.error('Error scraping the website:', error);
+    res.status(500).json({ error: 'An error occurred while scraping the website' });
+  }
+});
+
 app.get('/search', async (req, res) => {
   try {
     // Get query
-    const { query } = req.query;
+    const query = req.query;
+
+    var queryString = "";
+    Object.entries(query).forEach(queryElement => {
+      console.log(queryElement[1]);
+      if (Array.isArray(queryElement[1])) {
+        queryElement[1].forEach(element => {
+          queryString += (queryElement[0] + "[]=" + element + "&");
+        })
+      }
+      else {
+        queryString += (queryElement[0] + "=" + queryElement[1] + "&");
+      }
+    });
+
+    console.log(queryString);
  
     // Launch a headless browser
-    const browser = await puppeteer.launch({executablePath: "/opt/render/.cache/puppeteer/chrome/linux-126.0.6478.126/chrome-linux64/chrome/"});
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
     
     // Go to the target website
-    await page.goto(`https://www.vinted.it/catalog?search_text=${query}`, { waitUntil: 'networkidle2' });
+    await page.goto(`https://www.vinted.it/catalog?${queryString}`, { waitUntil: 'networkidle2' });
  
     // Wait for a specific element to ensure all data has loaded
     await page.waitForSelector('[data-testid^="product-item"]');
