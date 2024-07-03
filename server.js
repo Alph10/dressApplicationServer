@@ -13,7 +13,7 @@ app.get('/search', async (req, res) => {
     const { query } = req.query;
  
     // Launch a headless browser
-    const browser = await puppeteer.launch(executablePath: "/opt/render/project/src/node_modules/puppeteer-core/lib/cjs/puppeteer/node/");
+    const browser = await puppeteer.launch({executablePath: "/opt/render/project/src/node_modules/puppeteer-core/lib/cjs/puppeteer/node/"});
     const page = await browser.newPage();
     
     // Go to the target website
