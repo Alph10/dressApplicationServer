@@ -1,6 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -12,7 +13,6 @@ app.get('/brands', async (req, res) => {
     // Launch a headless browser
     const browser = await puppeteer.launch({headless:false, defaultViewport:null});
     const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
     
     // Go to the target website
     await page.goto(`https://www.vinted.it/catalog`, { waitUntil: 'networkidle2' });
@@ -71,7 +71,9 @@ app.get('/search', async (req, res) => {
     console.log(queryString);
  
     // Launch a headless browser
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
+    );
     const page = await browser.newPage();
     
     // Go to the target website
