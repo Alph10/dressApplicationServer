@@ -1,10 +1,52 @@
-const express = require("express");
+const express = require('express');
+const puppeteer = require('puppeteer');
+const cors = require("cors");
+
 const app = express();
 const port = process.env.PORT || 3001;
 
 app.get("/", (req, res) => res.type('html').send(html));
 
-const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+app.get('/search', async (req, res) => {
+  try {
+    // Get query
+    const { query } = req.query;
+ 
+    // Launch a headless browser
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    // Go to the target website
+    await page.goto(`https://www.vinted.it/catalog?search_text=${query}`, { waitUntil: 'networkidle2' });
+ 
+    // Wait for a specific element to ensure all data has loaded
+    await page.waitForSelector('[data-testid^="product-item"]');
+ 
+    // Evaluate the page content and extract the desired information
+    const items = await page.evaluate(() => {
+      const elements = document.querySelectorAll('div.new-item-box__container[data-testid^=product-item-id]');
+      return Array.from(elements).map(element => ({
+        title: element.children[1].children[0].children[0].children[0].alt.trim().split(", ")[0],
+        price: element.children[1].children[0].children[0].children[0].alt.trim().split(", ")[1],
+        image: element.children[1].children[0].children[0].children[0].src,
+        // Double href so that it works when the a tag is in the position 1 or 2
+        link: element.children[1].children[1].href,
+        link: element.children[1].children[2].href
+      }));
+    });
+ 
+    // Close the browser
+    await browser.close();
+ 
+    // Send the extracted information as JSON
+    res.json(items);
+  } catch (error) {
+    console.error('Error scraping the website:', error);
+    res.status(500).json({ error: 'An error occurred while scraping the website' });
+  }
+});
+
+const server = app.listen(port, () => console.log(`Dress Application listening on port ${port}!`));
 
 server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 120 * 1000;
